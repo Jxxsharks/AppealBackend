@@ -33,6 +33,7 @@ func Routeinit(db *gorm.DB, c *fiber.App) {
 	personnelAuthen.Put("/info", personnelHandler.UpdatePersonnel)
 	personnelAuthen.Put("/image", personnelHandler.UpdateImage)
 	personnelAuthen.Put("/petition/personnel", appealHandler.UpdatePersonnelPetition)
+	personnelAuthen.Put("/petition/score", appealHandler.UpdateScorePetition)
 
 	student := c.Group("/student")
 	studentAuthen := student.Use(middleware.IsAuthenticated)
@@ -43,6 +44,7 @@ func Routeinit(db *gorm.DB, c *fiber.App) {
 	studentAuthen.Post("/petition", appealHandler.CreateAppeal)
 	studentAuthen.Get("/petition/petitionid::petitionid", appealHandler.GetScorePetition)
 	studentAuthen.Put("/petition/personnel", appealHandler.UpdatePersonnelPetition)
+	studentAuthen.Put("/petition/score", appealHandler.UpdateScorePetition)
 	studentAuthen.Get("/petition/type::type", appealHandler.GetPetitionOfStudent)
 	studentAuthen.Get("/petition/type::type/:id", personnelHandler.GetName)
 	studentAuthen.Put("/password", studentHandler.UpdatePassword)

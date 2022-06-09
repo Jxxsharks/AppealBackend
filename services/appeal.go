@@ -1,9 +1,15 @@
 package services
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/jxxsharks/petitionbackend/errs"
 	"github.com/jxxsharks/petitionbackend/repository"
 	"github.com/ledongthuc/goterators"
@@ -21,11 +27,17 @@ type AppealRequest struct {
 	CreatedAt       time.Time
 	Updated1        time.Time
 	Updated2        time.Time
-	Request         string `json:"request"`
+	Request1        string `json:"request_1"`
+	Request2        string `json:"request_2"`
+	Request3        string `json:"request_3"`
+	Request4        string `json:"request_4"`
+	Request5        string `json:"request_5"`
 	File_1          string `json:"file_1"`
 	Status          string `json:"status"`
 	PersonnelID     int    `json:"personnel_id"`
 	SubjectID       int    `json:"subject_id"`
+	Base64          string `json:"base64"`
+	Type            string `json:"type"`
 	Issuccess       bool   `json:"is_success"`
 }
 
@@ -79,6 +91,7 @@ type ScorePetitionResponse struct {
 	ID     int       `json:"id"`
 	Date   time.Time `json:"date"`
 	SID    int       `json:"-"`
+	STDID  int       `json:"-"`
 	Stype  string    `json:"score_type"`
 	Status string    `json:"status"`
 }
@@ -109,6 +122,7 @@ type AppealService interface {
 	GetSpetitionOfStudent(int, string) ([]ScorePetitionResponse, error)
 	GetSpetitionOfPersonnel(string, int) ([]ScorePetitionResponse, error)
 	UpdatePersonnelPetition(int, AppealRequest) error
+	UpdateScorePetition(int, AppealRequest) error
 }
 
 func NewAppealService(appealRepo repository.AppealRepository) AppealService {
@@ -156,12 +170,12 @@ func (s appealService) UpdatePersonnelPetition(id int, appealRequest AppealReque
 	appeal := repository.Appeal{}
 	switch appealRequest.Status {
 	case "รออนุมัติ":
-		appeal.Request1 = appealRequest.Request
+		appeal.Request1 = appealRequest.Request1
 		appeal.Status = statusPersonnel[1]
 
 	case "แจ้งหัวหน้าสาขา":
 		appeal.Status = statusPersonnel[2]
-		appeal.Request2 = appealRequest.Request
+		appeal.Request2 = appealRequest.Request2
 		appeal.Updated1 = time.Now().Local().UTC()
 
 	case "แจ้งอาจารย์ที่เกี่ยวข้อง":
@@ -174,10 +188,10 @@ func (s appealService) UpdatePersonnelPetition(id int, appealRequest AppealReque
 		}
 	case "ขอพิจารณาใหม่":
 		appeal.Status = statusPersonnel[5]
-		appeal.Request3 = appealRequest.Request
+		appeal.Request3 = appealRequest.Request3
 	case "พิจารณาครั้งที่2":
 		appeal.Status = statusPersonnel[6]
-		appeal.Request4 = appealRequest.Request
+		appeal.Request4 = appealRequest.Request4
 		appeal.Updated2 = time.Now().Local().UTC()
 	case "แจ้งหัวหน้าสาขาครั้งที่2":
 		appeal.Status = statusPersonnel[7]
@@ -192,6 +206,89 @@ func (s appealService) UpdatePersonnelPetition(id int, appealRequest AppealReque
 	if err != nil {
 		return errs.NewNotImplement(err.Error())
 	}
+	return nil
+}
+
+func (s appealService) UpdateScorePetition(id int, appealRequest AppealRequest) error {
+
+	file, _ := base64.StdEncoding.DecodeString(appealRequest.Base64)
+	read := bytes.NewReader(file)
+	_ = read
+
+	appeal := repository.Appeal{}
+	switch appealRequest.Status {
+	case "รออนุมัติ":
+		if appealRequest.Issuccess {
+			appeal.Status = statusScore[2]
+		} else {
+			appeal.Status = statusScore[1]
+		}
+		appeal.Request1 = appealRequest.Request1
+	case "แจ้งหัวหน้าสาขา":
+		appeal.Request2 = appealRequest.Request2
+		appeal.Status = statusScore[3]
+	case "แจ้งอาจารย์ประจำวิชา":
+		var filename string
+		switch appealRequest.Type {
+		case "application/pdf":
+			filename = fmt.Sprintf("%s/%d%s", "petition", appeal.ID, ".pdf")
+		case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+			filename = fmt.Sprintf("%s/%d%s", "petition", appeal.ID, ".xlsx")
+		}
+
+		sess, err := session.NewSessionWithOptions(session.Options{
+			Config:  aws.Config{Region: aws.String("ap-southeast-1")},
+			Profile: "default",
+		})
+		if err != nil {
+			fmt.Println("here")
+			return err
+		}
+		uploader := s3manager.NewUploader(sess)
+		check, err := uploader.Upload(&s3manager.UploadInput{
+			ACL:         aws.String("public-read"),
+			Bucket:      aws.String("petitionplease"),
+			Key:         aws.String(filename),
+			Body:        read,
+			ContentType: aws.String(appealRequest.Type),
+		})
+		appeal.File_1 = check.Location
+		appeal.Status = statusScore[4]
+		appeal.Request3 = appealRequest.Request3
+		fmt.Println(appeal.Request3)
+	case "แจ้งผลพิจารณาครั้งที่1":
+		if appealRequest.Issuccess {
+			appeal.Status = "สำเร็จ"
+		} else {
+			appeal.Status = statusScore[5]
+		}
+	case "พิจารณาใหม่ครั้งที่1":
+		appeal.Status = statusScore[6]
+	case "แจ้งผลพิจารณาครั้งที่2":
+		if appealRequest.Issuccess {
+			appeal.Status = "สำเร็จ"
+		} else {
+			appeal.Status = statusScore[7]
+		}
+	case "พิจารณาใหม่ครั้งที่2":
+		appeal.Request4 = appealRequest.Request4
+		appeal.Status = statusScore[8]
+	case "ระหว่างพิจารณา":
+		appeal.Request5 = appealRequest.Request5
+		appeal.Status = statusScore[9]
+	case "แจ้งหัวหน้าสาขาครั้งที่2":
+		appeal.Status = statusScore[10]
+	case "แจ้งอาจารย์ประจำวิชาครั้งที่2":
+		appeal.Status = statusScore[11]
+	case "แจ้งผลพิจารณาครั้งที่3":
+		appeal.Status = "สำเร็จ"
+	}
+
+	err := s.appealRepo.UpdateScorePetition(appealRequest.ID, appealRequest.Status, appeal)
+	if err != nil {
+		return errs.NewNotImplement(err.Error())
+	}
+
 	return nil
 }
 
@@ -237,7 +334,7 @@ func (s appealService) GetSpetitionOfStudent(id int, types string) ([]ScorePetit
 	for _, petition := range getPetition {
 		score = append(score, ScorePetitionResponse{
 			ID:     petition.ID,
-			SID:    petition.StudentID,
+			SID:    *petition.SubjectID,
 			Date:   petition.CreatedAt,
 			Stype:  petition.Scoretype,
 			Status: petition.Status,
@@ -256,7 +353,7 @@ func (s appealService) GetSpetitionOfPersonnel(types string, position int) ([]Sc
 	for _, petition := range getPetition {
 		score = append(score, ScorePetitionResponse{
 			ID:     petition.ID,
-			SID:    petition.StudentID,
+			SID:    *petition.SubjectID,
 			Date:   petition.CreatedAt,
 			Stype:  petition.Scoretype,
 			Status: petition.Status,
@@ -265,7 +362,7 @@ func (s appealService) GetSpetitionOfPersonnel(types string, position int) ([]Sc
 	switch position {
 	case 2:
 		score = goterators.Filter(score, func(item ScorePetitionResponse) bool {
-			return item.Status != "รออนุมัติ" && item.Status != "แจ้งผลพิจารณาครั้งที่2" && item.Status != "พิจารณาใหม่ครั้งที่2" &&
+			return item.Status != "รออนุมัติ" && item.Status != "แจ้งผลพิจารณาครั้งที่1" && item.Status != "แจ้งผลพิจารณาครั้งที่2" && item.Status != "พิจารณาใหม่ครั้งที่2" &&
 				item.Status != "ระหว่างพิจารณา" && item.Status != "แจ้งผลพิจารณาครั้งที่3" && item.Status != "ไม่อนุมัติ"
 		})
 	case 3:

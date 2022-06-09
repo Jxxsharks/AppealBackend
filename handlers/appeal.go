@@ -35,6 +35,7 @@ type AppealHandler interface {
 	GetPetitionOfStudent(*fiber.Ctx) error
 	GetPetitionOfPersonnel(*fiber.Ctx) error
 	UpdatePersonnelPetition(*fiber.Ctx) error
+	UpdateScorePetition(*fiber.Ctx) error
 }
 
 func NewAppealHandler(appealSrv services.AppealService, personnelSrv services.PersonnelService, studentSrv services.StudentService, jwtSrv services.JWTServices) AppealHandler {
@@ -94,6 +95,27 @@ func (h appealHandler) UpdatePersonnelPetition(c *fiber.Ctx) error {
 		})
 	}
 
+	return c.JSON("success")
+}
+
+func (h appealHandler) UpdateScorePetition(c *fiber.Ctx) error {
+
+	appealdata := services.AppealRequest{}
+	err := c.BodyParser(&appealdata)
+	if err != nil {
+		c.Status(fiber.StatusInternalServerError)
+		return c.JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	err = h.appealSrv.UpdateScorePetition(appealdata.ID, appealdata)
+	if err != nil {
+		c.Status(fiber.StatusNotImplemented)
+		return c.JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
 	return c.JSON("success")
 }
 
@@ -158,7 +180,7 @@ func (h appealHandler) GetPetitionOfPersonnel(c *fiber.Ctx) error {
 	for _, petition := range petitions {
 		subject, _ := h.studentSrv.GetSubject(petition.SID)
 		personnel, _ := h.personnelSrv.GetName(subject.PersonnelId)
-		student, _ := h.studentSrv.GetStudentName(petition.SID)
+		student, _ := h.studentSrv.GetStudentName(petition.STDID)
 		scorePetitions = append(scorePetitions, ScorePetitionResponse{
 			ID:           petition.ID,
 			Date:         petition.Date,
@@ -186,6 +208,7 @@ func (h appealHandler) GetPetitionOfPersonnel(c *fiber.Ctx) error {
 		})
 	case 3:
 		scorePetitions = goterators.Filter(scorePetitions, func(item ScorePetitionResponse) bool {
+			fmt.Println(item)
 			return item.PID == *GetID
 		})
 	}

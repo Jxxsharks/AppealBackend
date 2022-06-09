@@ -42,6 +42,7 @@ type AppealRepository interface {
 	GetPetitionForStudents(int, string) ([]Appeal, error)
 	GetPetitionForPersonnel(string) ([]Appeal, error)
 	UpdatePersonnelPetition(int, string, Appeal) error
+	UpdateScorePetition(int, string, Appeal) error
 }
 
 func NewAppealRepository(db *gorm.DB) AppealRepository {
@@ -77,7 +78,7 @@ func (r appealRepository) CreateAppeal(appealdata Appeal) error {
 }
 
 func (r appealRepository) UpdatePersonnelPetition(id int, prevStatus string, appealdata Appeal) error {
-	fmt.Println(appealdata)
+
 	appeal := Appeal{}
 	result := r.db.Model(&appeal).Where("id = ? and status = ?", id, prevStatus).Updates(&appealdata)
 	if result.Error != nil {
@@ -85,6 +86,21 @@ func (r appealRepository) UpdatePersonnelPetition(id int, prevStatus string, app
 	}
 	if result.RowsAffected <= 0 {
 		return errors.New("Can't update appeal ")
+	}
+
+	return nil
+}
+
+func (r appealRepository) UpdateScorePetition(id int, prevStatus string, appealdata Appeal) error {
+
+	appeal := Appeal{}
+	fmt.Println(appealdata)
+	result := r.db.Model(&appeal).Where("id = ? and status = ?", id, prevStatus).Updates(&appealdata)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected <= 0 {
+		return errors.New("Can't update appeal")
 	}
 
 	return nil
