@@ -39,7 +39,7 @@ type studentRepositoryDB struct {
 }
 
 type StudentRepository interface {
-	LoginStudent(string, string) (*student, error)
+	LoginStudent(string) (*student, error)
 	GetStudentName(int) (*string, error)
 	GetStudentInfo(int) (*student, error)
 	GetSubjects(int) (*student, error)
@@ -86,7 +86,7 @@ func (r studentRepositoryDB) GetPersonnelOfSubjects(subjectsID []int) ([]subject
 	return getPersonnels, nil
 }
 
-func (r studentRepositoryDB) LoginStudent(username string, password string) (*student, error) {
+func (r studentRepositoryDB) LoginStudent(username string) (*student, error) {
 	var err error
 	student := student{}
 
@@ -118,6 +118,7 @@ func (r studentRepositoryDB) UpdateStudent(id int, email string, phone string) (
 
 	err := r.db.Model(&student).Updates(&student).Error
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 

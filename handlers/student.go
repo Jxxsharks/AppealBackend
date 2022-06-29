@@ -8,8 +8,10 @@ import (
 )
 
 type supdatePassword struct {
+	Username    string `json:"username"`
 	Password    string `json:"password"`
 	ConfirmPass string `json:"confirm_password"`
+	OldPassword string `json:"old_password"`
 }
 
 type supdateInfo struct {
@@ -108,7 +110,7 @@ func (h studentHandler) UpdatePassword(c *fiber.Ctx) error {
 
 	Getid, _ := h.jwtSrv.GetUserID(c)
 	id := *Getid
-	err := h.studentSrv.UpdatePassword(id, update.Password)
+	err := h.studentSrv.UpdatePassword(id, update.Username, update.Password, update.OldPassword)
 	if err != nil {
 		c.Status(fiber.StatusBadRequest)
 		return c.JSON(fiber.Map{

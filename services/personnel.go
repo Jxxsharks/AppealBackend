@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"regexp"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/jxxsharks/petitionbackend/errs"
 	"github.com/jxxsharks/petitionbackend/repository"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -25,7 +28,7 @@ type personnelService struct {
 
 type PersonnelService interface {
 	GetName(int) (*string, error)
-	UpdatePassword(int, string) error
+	UpdatePassword(int, string, string, string) error
 	UpdateImage(int, multipart.File) (*personnelResponse, error)
 	UpdateInfo(int, string, string) (*personnelResponse, error)
 }
@@ -34,16 +37,37 @@ func NewPersonnelService(personnelRepo repository.PersonnelRepossitory) Personne
 	return personnelService{personnelRepo: personnelRepo}
 }
 
-func (s personnelService) UpdatePassword(id int, password string) error {
+func (s personnelService) UpdatePassword(id int, username string, password string, oldPassword string) error {
 	var err error
 	passcrypt, err := bcrypt.GenerateFromPassword([]byte(password), 15)
 	if err != nil {
 		return err
 	}
-	err = s.personnelRepo.UpdatePassword(id, string(passcrypt))
-	if err != nil {
-		return err
+
+	personnel, _ := s.personnelRepo.GetPersonnel(username)
+
+	if personnel.Password == "" {
+		match, _ := regexp.MatchString(oldPassword+"$", personnel.CitizenID)
+		if match {
+			err := s.personnelRepo.UpdatePassword(id, string(passcrypt))
+			if err != nil {
+				return err
+			}
+		} else {
+			return errs.NewNotImplement("can not update password")
+		}
+	} else if personnel.Password != "" {
+		err := bcrypt.CompareHashAndPassword([]byte(personnel.Password), []byte(oldPassword))
+		if err != nil {
+			return errs.NewNotImplement("can not update password")
+		} else {
+			err := s.personnelRepo.UpdatePassword(id, string(passcrypt))
+			if err != nil {
+				return errs.NewNotImplement("can not update password")
+			}
+		}
 	}
+
 	return nil
 }
 
@@ -68,10 +92,10 @@ func (s personnelService) UpdateImage(id int, img multipart.File) (*personnelRes
 
 	switch http.DetectContentType(fileHeader) {
 	case "image/jpeg":
-		filename = fmt.Sprintf("%s/%d%s", "img", id, ".jpg")
+		filename = fmt.Sprintf("%s/%s%d%s%s", "img", "P", id, time.Now().String(), ".jpg")
 		contentType = "image/jpeg"
 	case "image/png":
-		filename = fmt.Sprintf("%s/%d%s", "img", id, ".png")
+		filename = fmt.Sprintf("%s/%s%d%s%s", "img", "P", id, time.Now().String(), ".png")
 		contentType = "image/png"
 	}
 	sess, err := session.NewSessionWithOptions(session.Options{

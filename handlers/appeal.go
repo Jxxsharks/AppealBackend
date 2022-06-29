@@ -226,6 +226,7 @@ func (h appealHandler) GetScorePetition(c *fiber.Ctx) error {
 			"message": "Can not get data",
 		})
 	}
+	fmt.Println(scoreAppeal.Updated3)
 	subject, _ := h.studentSrv.GetSubject(scoreAppeal.SubjectID)
 	personnel, _ := h.personnelSrv.GetName(subject.PersonnelId)
 	student, _ := h.studentSrv.GetStudentInfo(scoreAppeal.StudentID)
@@ -241,6 +242,10 @@ func (h appealHandler) GetScorePetition(c *fiber.Ctx) error {
 	scoreAppeal.Field = student.Field
 	scoreAppeal.Email = student.Email
 	scoreAppeal.Phone = student.Phone
+	branchH, err := h.personnelSrv.GetName(1)
+	dean, err := h.personnelSrv.GetName(2)
+	scoreAppeal.BranchH = *branchH
+	scoreAppeal.Dean = *dean
 
 	return c.JSON(scoreAppeal)
 }

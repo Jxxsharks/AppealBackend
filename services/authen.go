@@ -15,6 +15,7 @@ type AuthenRequest struct {
 
 type authenResponse struct {
 	ID            int    `json:"id"`
+	Username      string `json:"username"`
 	FirstName     string `json:"first_name"`
 	LastName      string `json:"last_name"`
 	Field         string `json:"field"`
@@ -23,7 +24,7 @@ type authenResponse struct {
 	Phone         string `json:"phone"`
 	Image         string `json:"image,omitempty"`
 	IsStudent     bool   `json:"is_student"`
-	IsChngPass    bool   `json:"is_change,omitempty"`
+	IsChngPass    bool   `json:"is_change"`
 	PositionID    int    `json:"position_id,omitempty"`
 	PersonnelID   int    `json:"personnel_id,omitempty"`
 	PersonnelName string `json:"personnel_name,omitempty"`
@@ -62,6 +63,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 			if match {
 				authendata := authenResponse{
 					ID:         dataDB.ID,
+					Username:   dataDB.PersonnelID,
 					FirstName:  dataDB.FirstName,
 					LastName:   dataDB.LastName,
 					Field:      dataDB.Field,
@@ -69,7 +71,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 					Email:      dataDB.Email,
 					Phone:      dataDB.Phone,
 					Image:      dataDB.Image,
-					IsChngPass: dataDB.IsChgPass,
+					IsChngPass: true,
 					IsStudent:  IsStudent,
 					PositionID: dataDB.PositionID,
 				}
@@ -84,6 +86,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 			if err == nil {
 				authendata := authenResponse{
 					ID:         dataDB.ID,
+					Username:   dataDB.PersonnelID,
 					FirstName:  dataDB.FirstName,
 					LastName:   dataDB.LastName,
 					Field:      dataDB.Field,
@@ -91,7 +94,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 					Email:      dataDB.Email,
 					Phone:      dataDB.Phone,
 					Image:      dataDB.Image,
-					IsChngPass: dataDB.IsChgPass,
+					IsChngPass: false,
 					IsStudent:  IsStudent,
 					PositionID: dataDB.PositionID,
 				}
@@ -101,7 +104,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 
 	case "S":
 
-		dataDB, err := s.studentRepo.LoginStudent(request.UserID, request.Password)
+		dataDB, err := s.studentRepo.LoginStudent(request.UserID)
 		IsStudent = true
 		if err != nil {
 			return nil, errs.NewNotFoundError("User Not Found")
@@ -112,6 +115,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 			if match {
 				authendata := authenResponse{
 					ID:          dataDB.ID,
+					Username:    dataDB.StudentID,
 					FirstName:   dataDB.FirstName,
 					LastName:    dataDB.LastName,
 					Field:       dataDB.Field,
@@ -120,7 +124,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 					Phone:       dataDB.Phone,
 					Image:       dataDB.Image,
 					IsStudent:   IsStudent,
-					IsChngPass:  dataDB.IsChgPass,
+					IsChngPass:  true,
 					PersonnelID: dataDB.PersonnelID,
 				}
 				return &authendata, nil
@@ -132,6 +136,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 			if err == nil {
 				authendata := authenResponse{
 					ID:          dataDB.ID,
+					Username:    dataDB.StudentID,
 					FirstName:   dataDB.FirstName,
 					LastName:    dataDB.LastName,
 					Field:       dataDB.Field,
@@ -140,7 +145,7 @@ func (s authenService) Login(request AuthenRequest) (*authenResponse, error) {
 					Phone:       dataDB.Phone,
 					Image:       dataDB.Image,
 					IsStudent:   IsStudent,
-					IsChngPass:  dataDB.IsChgPass,
+					IsChngPass:  false,
 					PersonnelID: dataDB.PersonnelID,
 				}
 				return &authendata, nil

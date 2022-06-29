@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"regexp"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/jxxsharks/petitionbackend/errs"
 	"github.com/jxxsharks/petitionbackend/repository"
 	"github.com/ledongthuc/goterators"
 	"golang.org/x/crypto/bcrypt"
@@ -62,7 +65,7 @@ type StudentService interface {
 	GetStudentInfo(int) (*GetStudentInfo, error)
 	GetStudentName(int) (*string, error)
 	GetSubject(int) (*subject, error)
-	UpdatePassword(int, string) error
+	UpdatePassword(int, string, string, string) error
 	UpdateImage(int, multipart.File) (*studentResponse, error)
 	UpdateInfo(int, string, string) (*studentResponse, error)
 }
@@ -162,7 +165,9 @@ func (s studentService) GetSubjects(id int) (interface{}, error) {
 	for _, subjects := range allSubjects {
 
 		for _, teach := range subjects.Personnel {
+
 			if teach.ID == subjects.PersonnelID {
+				fmt.Println(teach.ID)
 				personnel.PersonnelID = teach.ID
 				personnel.FirstName = teach.FirstName
 				personnel.LastName = teach.LastName
@@ -205,17 +210,35 @@ func (s studentService) GetSubject(id int) (*subject, error) {
 	return &subject, nil
 }
 
-func (s studentService) UpdatePassword(id int, password string) error {
+func (s studentService) UpdatePassword(id int, username string, password string, oldPassword string) error {
 	passcrypt, err := bcrypt.GenerateFromPassword([]byte(password), 15)
 	if err != nil {
 		return err
 	}
 
-	err = s.studentRepo.UpdatePassword(id, string(passcrypt))
-	if err != nil {
-		return err
-	}
+	student, _ := s.studentRepo.LoginStudent(username)
 
+	if student.Password == "" {
+		match, _ := regexp.MatchString(oldPassword+"$", student.CitizenID)
+		if match {
+			err = s.studentRepo.UpdatePassword(id, string(passcrypt))
+			if err != nil {
+				return err
+			}
+		} else {
+			return errs.NewNotImplement("can not update password")
+		}
+	} else if student.Password != "" {
+		err := bcrypt.CompareHashAndPassword([]byte(student.Password), []byte(oldPassword))
+		if err != nil {
+			return errs.NewNotImplement("can not update password")
+		} else {
+			err := s.studentRepo.UpdatePassword(id, string(passcrypt))
+			if err != nil {
+				return errs.NewNotImplement("can not update password")
+			}
+		}
+	}
 	return nil
 }
 
@@ -240,10 +263,10 @@ func (s studentService) UpdateImage(id int, img multipart.File) (*studentRespons
 
 	switch http.DetectContentType(fileHeader) {
 	case "image/jpeg":
-		filename = fmt.Sprintf("%s/%d%s", "img", id, ".jpg")
+		filename = fmt.Sprintf("%s/%s%d%s%s", "img", "S", id, time.Now().String(), ".jpg")
 		contentType = "image/jpeg"
 	case "image/png":
-		filename = fmt.Sprintf("%s/%d%s", "img", id, ".png")
+		filename = fmt.Sprintf("%s/%s%d%s%s", "img", "S", id, time.Now().String(), ".png")
 		contentType = "image/png"
 	}
 	sess, err := session.NewSessionWithOptions(session.Options{

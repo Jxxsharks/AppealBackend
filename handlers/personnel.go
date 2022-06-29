@@ -8,8 +8,10 @@ import (
 )
 
 type pupdateData struct {
+	Username    string `json:"username"`
 	Password    string `json:"password"`
 	ConfirmPass string `json:"confirm_password"`
+	OldPassword string `json:"old_password"`
 }
 
 type pupdateInfo struct {
@@ -56,7 +58,7 @@ func (h personnelHandler) UpdatePassword(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.personnelSrv.UpdatePassword(*Getid, update.Password)
+	err = h.personnelSrv.UpdatePassword(*Getid, update.Username, update.Password, update.OldPassword)
 	if err != nil {
 		c.Status(fiber.StatusBadRequest)
 		return c.JSON(fiber.Map{

@@ -20,6 +20,9 @@ type Appeal struct {
 	CreatedAt       time.Time
 	Updated1        time.Time
 	Updated2        time.Time
+	Updated3        time.Time
+	Updated4        time.Time
+	Updated5        time.Time
 	Request1        string
 	Request2        string
 	Request3        string
@@ -58,7 +61,6 @@ func (r appealRepository) GetScorePetition(id int) (*Appeal, error) {
 		fmt.Println(err)
 		return nil, err
 	}
-
 	return &appeal, nil
 }
 

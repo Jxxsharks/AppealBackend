@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +24,7 @@ func IsAuthenticated(c *fiber.Ctx) error {
 	}
 	payload := token.Claims.(*services.JwtClaims)
 	isStudent := strings.Contains(c.Path(), "/student")
+	fmt.Println(payload)
 	if payload.Role == "personnel" && isStudent || payload.Role == "student" && !isStudent {
 		c.Status(fiber.StatusUnauthorized)
 		return c.JSON(fiber.Map{
